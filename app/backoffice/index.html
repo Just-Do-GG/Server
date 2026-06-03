@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Just-Do-GG Admin</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: #0f0f1a; color: #fff; }
+        .sidebar { width: 240px; background: #1a1a2e; height: 100vh; position: fixed; padding: 20px; }
+        .sidebar h1 { font-size: 18px; margin-bottom: 30px; color: #7c7cf0; }
+        .sidebar a { display: block; padding: 12px; color: #888; text-decoration: none; border-radius: 8px; margin-bottom: 4px; }
+        .sidebar a.active, .sidebar a:hover { background: #2a2a4e; color: #fff; }
+        .main { margin-left: 240px; padding: 30px; }
+        .card { background: #1a1a2e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .card h2 { font-size: 16px; margin-bottom: 16px; color: #7c7cf0; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px; color: #666; font-size: 12px; text-transform: uppercase; }
+        td { padding: 12px; border-top: 1px solid #2a2a4e; font-size: 14px; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+        .badge.guest { background: #2a4a2e; color: #4caf50; }
+        .badge.google { background: #2a3a4e; color: #4299ff; }
+        .badge.apple { background: #3a2a4e; color: #a855f7; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .stat { background: #1a1a2e; border-radius: 12px; padding: 20px; }
+        .stat h3 { font-size: 28px; color: #7c7cf0; }
+        .stat p { font-size: 12px; color: #666; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="sidebar">
+            <h1>🎮 Just-Do-GG</h1>
+            <a href="#" :class="{active: tab === 'users'}" @click="tab='users'">👥 Users</a>
+            <a href="#" :class="{active: tab === 'games'}" @click="tab='games'">🎯 Games</a>
+        </div>
+        <div class="main">
+            <div v-if="tab === 'users'">
+                <div class="stats">
+                    <div class="stat"><h3>{{ users.length }}</h3><p>Total Users</p></div>
+                    <div class="stat"><h3>{{ guestCount }}</h3><p>Guest</p></div>
+                    <div class="stat"><h3>{{ googleCount + appleCount }}</h3><p>OAuth</p></div>
+                </div>
+                <div class="card">
+                    <h2>Users</h2>
+                    <table>
+                        <thead><tr><th>ID</th><th>Type</th><th>Game</th><th>Created</th><th>Last Login</th></tr></thead>
+                        <tbody>
+                            <tr v-for="u in users" :key="u.id">
+                                <td>{{ u.id.slice(0,8) }}...</td>
+                                <td><span class="badge" :class="u.auth_type">{{ u.auth_type }}</span></td>
+                                <td>{{ u.game_id }}</td>
+                                <td>{{ new Date(u.created_at).toLocaleDateString() }}</td>
+                                <td>{{ new Date(u.last_login).toLocaleDateString() }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div v-if="tab === 'games'">
+                <div class="card">
+                    <h2>Games</h2>
+                    <p style="color:#666">Coming soon...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        createApp({
+            data() {
+                return { tab: 'users', users: [] }
+            },
+            computed: {
+                guestCount() { return this.users.filter(u => u.auth_type === 'guest').length },
+                googleCount() { return this.users.filter(u => u.auth_type === 'google').length },
+                appleCount() { return this.users.filter(u => u.auth_type === 'apple').length }
+            },
+            mounted() { this.fetchUsers() },
+            methods: {
+                async fetchUsers() {
+                    try {
+                        const r = await fetch('/api/admin/users');
+                        this.users = await r.json();
+                    } catch(e) { console.error(e) }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
