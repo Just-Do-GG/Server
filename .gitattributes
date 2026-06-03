@@ -1,0 +1,16 @@
+# Auto detect
+* text=auto
+
+# Python
+*.py text diff=python
+*.pyc binary
+
+# Docs
+*.md text
+*.yml text
+*.yaml text
+*.json text
+
+# Docker
+Dockerfile text
+docker-compose.yml text
