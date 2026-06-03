@@ -8,60 +8,112 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, sans-serif; background: #0f0f1a; color: #fff; }
+        
         .sidebar { width: 240px; background: #1a1a2e; height: 100vh; position: fixed; padding: 20px; }
         .sidebar h1 { font-size: 18px; margin-bottom: 30px; color: #7c7cf0; }
-        .sidebar a { display: block; padding: 12px; color: #888; text-decoration: none; border-radius: 8px; margin-bottom: 4px; }
+        .sidebar a { display: block; padding: 12px; color: #888; text-decoration: none; border-radius: 8px; margin-bottom: 4px; cursor: pointer; }
         .sidebar a.active, .sidebar a:hover { background: #2a2a4e; color: #fff; }
+        .sidebar select { width: 100%; padding: 10px; background: #2a2a4e; color: #fff; border: 1px solid #3a3a5e; border-radius: 8px; margin-bottom: 20px; }
+        
         .main { margin-left: 240px; padding: 30px; }
+        
         .card { background: #1a1a2e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
         .card h2 { font-size: 16px; margin-bottom: 16px; color: #7c7cf0; }
+        
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; padding: 12px; color: #666; font-size: 12px; text-transform: uppercase; }
         td { padding: 12px; border-top: 1px solid #2a2a4e; font-size: 14px; }
+        
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; }
         .badge.guest { background: #2a4a2e; color: #4caf50; }
         .badge.google { background: #2a3a4e; color: #4299ff; }
         .badge.apple { background: #3a2a4e; color: #a855f7; }
-        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
         .stat { background: #1a1a2e; border-radius: 12px; padding: 20px; }
         .stat h3 { font-size: 28px; color: #7c7cf0; }
         .stat p { font-size: 12px; color: #666; margin-top: 4px; }
+        
+        .btn { padding: 10px 20px; background: #7c7cf0; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+        .btn:hover { background: #6a6ae0; }
+        .btn.small { padding: 6px 12px; font-size: 12px; }
+        .btn.green { background: #4caf50; }
+        .btn.green:hover { background: #3d9140; }
+        
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #1a1a2e; padding: 30px; border-radius: 12px; width: 400px; }
+        .modal-content h3 { margin-bottom: 16px; }
+        .modal-content input { width: 100%; padding: 10px; background: #2a2a4e; border: 1px solid #3a3a5e; border-radius: 8px; color: #fff; margin-bottom: 16px; }
+        .modal-content .actions { display: flex; gap: 10px; justify-content: flex-end; }
     </style>
 </head>
 <body>
     <div id="app">
         <div class="sidebar">
             <h1>🎮 Just-Do-GG</h1>
-            <a href="#" :class="{active: tab === 'users'}" @click="tab='users'">👥 Users</a>
-            <a href="#" :class="{active: tab === 'games'}" @click="tab='games'">🎯 Games</a>
+            <label style="color:#666;font-size:12px;margin-bottom:6px;display:block">Select Game</label>
+            <select v-model="selectedGame" @change="onGameChange">
+                <option value="">-- All Games --</option>
+                <option v-for="g in games" :value="g.game_id">{{ g.game_id }}</option>
+            </select>
+            <button class="btn small green" @click="showCreateGame = true" style="width:100%;margin-bottom:20px">+ New Game</button>
+            
+            <a :class="{active: tab === 'users'}" @click="tab='users'">👥 Users</a>
+            <a :class="{active: tab === 'games'}" @click="tab='games'">🎯 Games</a>
         </div>
+
         <div class="main">
+            <!-- Users Tab -->
             <div v-if="tab === 'users'">
                 <div class="stats">
-                    <div class="stat"><h3>{{ users.length }}</h3><p>Total Users</p></div>
-                    <div class="stat"><h3>{{ guestCount }}</h3><p>Guest</p></div>
-                    <div class="stat"><h3>{{ googleCount + appleCount }}</h3><p>OAuth</p></div>
+                    <div class="stat"><h3>{{ filteredUsers.length }}</h3><p>Total Users</p></div>
+                    <div class="stat"><h3>{{ countType('guest') }}</h3><p>Guest</p></div>
+                    <div class="stat"><h3>{{ countType('google') }}</h3><p>Google</p></div>
+                    <div class="stat"><h3>{{ countType('apple') }}</h3><p>Apple</p></div>
                 </div>
                 <div class="card">
-                    <h2>Users</h2>
+                    <h2>Users <span v-if="selectedGame" style="color:#666;font-size:14px">({{ selectedGame }})</span></h2>
                     <table>
-                        <thead><tr><th>ID</th><th>Type</th><th>Game</th><th>Created</th><th>Last Login</th></tr></thead>
+                        <thead><tr><th>ID</th><th>Type</th><th>Nick</th><th>Game</th><th>Created</th></tr></thead>
                         <tbody>
-                            <tr v-for="u in users" :key="u.id">
+                            <tr v-for="u in filteredUsers" :key="u.id">
                                 <td>{{ u.id.slice(0,8) }}...</td>
                                 <td><span class="badge" :class="u.auth_type">{{ u.auth_type }}</span></td>
+                                <td>{{ u.display_name || '-' }}</td>
                                 <td>{{ u.game_id }}</td>
                                 <td>{{ new Date(u.created_at).toLocaleDateString() }}</td>
-                                <td>{{ new Date(u.last_login).toLocaleDateString() }}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            <!-- Games Tab -->
             <div v-if="tab === 'games'">
                 <div class="card">
                     <h2>Games</h2>
-                    <p style="color:#666">Coming soon...</p>
+                    <table>
+                        <thead><tr><th>Game ID</th><th>Features</th><th>Created</th></tr></thead>
+                        <tbody>
+                            <tr v-for="g in games" :key="g.id">
+                                <td>{{ g.game_id }}</td>
+                                <td>{{ Object.keys(g.features||{}).length }} features</td>
+                                <td>{{ new Date(g.created_at).toLocaleDateString() }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Game Modal -->
+        <div class="modal" v-if="showCreateGame" @click.self="showCreateGame=false">
+            <div class="modal-content">
+                <h3>Create New Game</h3>
+                <input v-model="newGameId" placeholder="game_id (e.g. game_2)" @keyup.enter="createGame">
+                <div class="actions">
+                    <button class="btn" style="background:#444" @click="showCreateGame=false">Cancel</button>
+                    <button class="btn green" @click="createGame">Create</button>
                 </div>
             </div>
         </div>
@@ -71,20 +123,54 @@
         const { createApp } = Vue;
         createApp({
             data() {
-                return { tab: 'users', users: [] }
+                return {
+                    tab: 'users',
+                    users: [],
+                    games: [],
+                    selectedGame: '',
+                    showCreateGame: false,
+                    newGameId: ''
+                }
             },
             computed: {
-                guestCount() { return this.users.filter(u => u.auth_type === 'guest').length },
-                googleCount() { return this.users.filter(u => u.auth_type === 'google').length },
-                appleCount() { return this.users.filter(u => u.auth_type === 'apple').length }
+                filteredUsers() {
+                    if (!this.selectedGame) return this.users;
+                    return this.users.filter(u => u.game_id === this.selectedGame);
+                }
             },
-            mounted() { this.fetchUsers() },
+            mounted() {
+                this.fetchUsers();
+                this.fetchGames();
+            },
             methods: {
                 async fetchUsers() {
                     try {
                         const r = await fetch('/api/admin/users');
                         this.users = await r.json();
                     } catch(e) { console.error(e) }
+                },
+                async fetchGames() {
+                    try {
+                        const r = await fetch('/api/admin/games');
+                        this.games = await r.json();
+                    } catch(e) { console.error(e) }
+                },
+                async createGame() {
+                    if (!this.newGameId) return;
+                    try {
+                        const r = await fetch('/api/admin/games?game_id=' + this.newGameId, { method: 'POST' });
+                        const data = await r.json();
+                        if (data.error) { alert(data.error); return; }
+                        this.games.push({ game_id: this.newGameId, features: {}, id: data.game_id, created_at: new Date().toISOString() });
+                        this.showCreateGame = false;
+                        this.newGameId = '';
+                    } catch(e) { console.error(e) }
+                },
+                onGameChange() {
+                    this.fetchUsers();
+                },
+                countType(type) {
+                    return this.filteredUsers.filter(u => u.auth_type === type).length;
                 }
             }
         }).mount('#app');
